@@ -144,11 +144,6 @@ GitHub: [alihelmy27](https://github.com/alihelmy27)
 
 ---
 
-## Screenshots
-
-_Add screenshots of your project here to visually showcase its features._
-
----
 
 ## Acknowledgments
 
