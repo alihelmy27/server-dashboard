@@ -40,19 +40,12 @@ Before you begin, ensure you have the following installed:
    npm install
    ```
 
-3. **Set Up Environment Variables**:
-   Create a `.env` file in the root directory and configure the following:
-   ```env
-   MONGODB_URI=<your_mongodb_connection_string>
-   JWT_SECRET=<your_jwt_secret>
-   ```
-
-4. **Run the Application**:
+3. **Run the Application**:
    ```bash
    npm run dev
    ```
 
-5. **Access the App**:
+4. **Access the App**:
    Open your browser and navigate to:
    ```
    http://localhost:3000
