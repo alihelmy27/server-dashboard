@@ -1,113 +1,182 @@
-import Image from 'next/image'
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function HomePage() {
+  const [servers, setServers] = useState<any[]>([]);
+  const [selectedServer, setSelectedServer] = useState<any | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [filter, setFilter] = useState<string>(''); // State for filtering
+  const [sortOrder, setSortOrder] = useState<string>('asc'); // State for sorting
+
+  const router = useRouter();
+
+  // Function to check if the user is authenticated
+  const checkAuthentication = () => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      setIsAuthenticated(true); // User is authenticated
+    } else {
+      setIsAuthenticated(false); // User is not authenticated
+    }
+  };
+
+  useEffect(() => {
+    const fetchServers = async () => {
+      try {
+        const response = await fetch('/api/servers'); // Fetch server status data
+        const data = await response.json();
+
+        if (Array.isArray(data)) {
+          setServers(data);
+        } else {
+          console.error('Invalid data format:', data);
+          setError('Failed to load server data.');
+        }
+      } catch (error) {
+        console.error('Error fetching server data:', error);
+        setError('Error fetching server data.');
+      }
+    };
+
+    fetchServers();
+    checkAuthentication(); // Check user authentication on page load
+  }, []);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Up':
+        return 'bg-green-500';
+      case 'Down':
+        return 'bg-red-500';
+      case 'Degraded':
+        return 'bg-yellow-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('authToken'); // Remove token on sign out
+    setIsAuthenticated(false); // Update authentication state
+    router.push('/login'); // Redirect to login page
+  };
+
+  const handleServerClick = (server: any) => {
+    setSelectedServer(server);
+  };
+
+  // Filter servers based on selected status
+  const filteredServers = servers.filter((server) =>
+    filter ? server.status === filter : true
+  );
+
+  // Sort servers alphabetically by name
+  const sortedServers = filteredServers.sort((a, b) =>
+    sortOrder === 'asc'
+      ? a.name.localeCompare(b.name)
+      : b.name.localeCompare(a.name)
+  );
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="p-6">
+      <h2 className="text-3xl font-bold mb-4">Server Status</h2>
+      {error && <p className="text-red-500">{error}</p>}
+
+      <div className="flex justify-between items-center mb-4">
+        {!isAuthenticated ? (
+          <div>
+            <button
+              onClick={() => router.push('/login')}
+              className="px-4 py-2 mr-2 text-white bg-blue-500 rounded-md hover:bg-blue-600"
+            >
+              Login
+            </button>
+            <button
+              onClick={() => router.push('/signup')}
+              className="px-4 py-2 text-white bg-green-500 rounded-md hover:bg-green-600"
+            >
+              Sign Up
+            </button>
+          </div>
+        ) : (
+          <div>
+            <button
+              onClick={handleSignOut}
+              className="px-4 py-2 text-white bg-red-500 rounded-md hover:bg-red-600"
+            >
+              Sign Out
+            </button>
+            <button
+              onClick={() => router.push('/signup')}
+              className="px-4 py-2 text-white bg-yellow-500 rounded-md hover:bg-yellow-600 ml-4"
+            >
+              Sign Up (Already Logged In)
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Filter Dropdown */}
+      <div className="mb-4">
+        <label className="block mb-2 font-medium">Filter Servers by Status:</label>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="w-full p-2 border rounded-md"
+        >
+          <option value="">All</option>
+          <option value="Up">Up</option>
+          <option value="Down">Down</option>
+          <option value="Degraded">Degraded</option>
+        </select>
+      </div>
+
+      {/* Sort Dropdown */}
+      <div className="mb-4">
+        <label className="block mb-2 font-medium">Sort Servers:</label>
+        <select
+          value={sortOrder}
+          onChange={(e) => setSortOrder(e.target.value)}
+          className="w-full p-2 border rounded-md"
+        >
+          <option value="asc">Name (A-Z)</option>
+          <option value="desc">Name (Z-A)</option>
+        </select>
+      </div>
+
+      {/* Server Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {sortedServers.map((server) => (
+          <div
+            key={server.name}
+            onClick={() => handleServerClick(server)}
+            className="p-4 border rounded-lg shadow-md cursor-pointer hover:shadow-xl"
           >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+            <h3 className="text-xl font-semibold">{server.name}</h3>
+            <span
+              className={`inline-block px-4 py-2 mt-2 text-white rounded-md ${getStatusBadge(
+                server.status
+              )}`}
+            >
+              {server.status}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Selected Server Details */}
+      {selectedServer && (
+        <div className="mt-8 p-6 border rounded-lg shadow-md bg-gray-50">
+          <h3 className="text-2xl font-bold mb-2">Server Details</h3>
+          <p><strong>Name:</strong> {selectedServer.name}</p>
+          <p><strong>IP Address:</strong> {selectedServer.ip}</p>
+          <p><strong>Response Time:</strong> {selectedServer.responseTime}</p>
+          <p><strong>Uptime:</strong> {selectedServer.uptime}</p>
         </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore the Next.js 13 playground.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
+      )}
+    </div>
+  );
 }
